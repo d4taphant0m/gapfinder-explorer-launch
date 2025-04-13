@@ -90,7 +90,7 @@ const ResultsPage = () => {
           <Route path="/resources" element={<ResourcesSection topic={topic} aiOutput={aiOutput} />} />
           <Route path="/projects" element={<ProjectsSection topic={topic} />} />
           <Route path="/ai-resources" element={<AiResources topic={topic} />} />
-          <Route path="/interview-questions" element={<InterviewQuestions topic={topic} />} />
+          <Route path="/interview-questions" element={<InterviewQuestions />} />
           <Route path="*" element={<Navigate to="/results" replace />} />
         </Routes>
       </div>

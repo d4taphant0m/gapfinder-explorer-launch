@@ -3,9 +3,19 @@
 import { useEffect, useState } from 'react';
 import { marked } from 'marked';
 import {
-  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { FileText, Youtube, Book } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import axios from 'axios';
@@ -30,11 +40,18 @@ type Documentation = {
   error?: string;
 };
 
+type RoadmapStep = {
+  step: number; // changed from 'stage'
+  title: string;
+  topics: string[];
+  resources: string[];
+};
+
+
 type AIOutput = {
   all_topics: string[];
   covered_topics: string[];
   gap_topics: string[];
-  study_roadmap: string[];
 };
 
 export const ResourcesSection = ({
@@ -48,14 +65,12 @@ export const ResourcesSection = ({
   const [aiOutput, setAiOutput] = useState<AIOutput | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [docs, setDocs] = useState<Documentation[]>([]);
+  const [roadmap, setRoadmap] = useState<RoadmapStep[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load from props or localStorage
   useEffect(() => {
-    const storedTopic = localStorage.getItem("gapfinder_topic");
-    const storedAiOutput = localStorage.getItem("gapfinder_aiOutput");
-
-    console.log("Stored AI Output:", storedAiOutput);
+    const storedTopic = localStorage.getItem('gapfinder_topic');
+    const storedAiOutput = localStorage.getItem('gapfinder_aiOutput');
 
     const parsedOutput: AIOutput | null =
       storedAiOutput && typeof storedAiOutput === 'string'
@@ -66,21 +81,22 @@ export const ResourcesSection = ({
     setAiOutput(propAiOutput || parsedOutput || null);
   }, [propTopic, propAiOutput]);
 
-
-  // Fetch videos/docs
   useEffect(() => {
     const fetchAllResources = async () => {
       if (!aiOutput || !aiOutput.gap_topics?.length) return;
       setLoading(true);
       try {
         const topics = aiOutput.gap_topics;
-        const [videosRes, docsRes] = await Promise.all([
+
+        const [videosRes, docsRes, roadmapRes] = await Promise.all([
           axios.post('https://backend-fawn-nine-74.vercel.app/getvideos', { topics, max: 2 }),
           axios.post('https://backend-fawn-nine-74.vercel.app/fetch-docs', { topics }),
+          axios.post('https://backend-fawn-nine-74.vercel.app/generate-study-roadmap', { topics }),
         ]);
-        console.log(videosRes.data)
+
         setVideos(videosRes.data || []);
         setDocs(docsRes.data.documentation || []);
+        setRoadmap(roadmapRes.data.roadmap || []);
       } catch (err) {
         console.error('Error fetching resources:', err);
       } finally {
@@ -91,7 +107,12 @@ export const ResourcesSection = ({
     fetchAllResources();
   }, [aiOutput]);
 
-  if (!aiOutput) return <p className="text-muted-foreground">Loading personalized resources...</p>;
+  if (!aiOutput)
+    return (
+      <div className="text-muted-foreground">
+        Loading personalized resources...
+      </div>
+    );
 
   return (
     <div className="space-y-6">
@@ -148,14 +169,20 @@ export const ResourcesSection = ({
                 <div
                   className="prose max-w-none"
                   dangerouslySetInnerHTML={{
-                    __html: doc.readme ? marked(doc.readme) : '<p>No README available.</p>',
+                    __html: doc.readme
+                      ? marked(doc.readme)
+                      : '<div>No README available.</div>',
                   }}
                 />
               </CardContent>
               {doc.github && (
                 <CardFooter>
                   <Button variant="outline" asChild>
-                    <a href={doc.github.url} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={doc.github.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Explore on GitHub
                     </a>
                   </Button>
@@ -185,38 +212,59 @@ export const ResourcesSection = ({
                   ></iframe>
                 </div>
               </CardContent>
-
             </Card>
           ))}
           {videos.length === 0 && !loading && (
-            <p className="text-muted-foreground">No videos found for the selected topics.</p>
+            <p className="text-muted-foreground">
+              No videos found for the selected topics.
+            </p>
           )}
         </TabsContent>
 
         {/* Roadmaps */}
-        <TabsContent value="roadmaps" className="space-y-4">
-          {aiOutput.study_roadmap.map((step, index) => (
-            <Card key={index}>
-              <CardHeader>
-                <CardTitle>Step {index + 1}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {step && typeof step === 'string' && step.trim().length > 0 ? (
-                  <div
-                    className="prose max-w-none"
-                    dangerouslySetInnerHTML={{ __html: marked(step) }}
-                  />
-                ) : (
-                  <p className="text-muted-foreground">No content available for this step.</p>
-                )}
-              </CardContent>
-
-            </Card>
-          ))}
-        </TabsContent>
+        {/* Roadmaps */}
+<TabsContent value="roadmaps" className="space-y-4">
+  {roadmap.map((step: RoadmapStep, index: number) => (
+    <Card key={index}>
+      <CardHeader>
+        <CardTitle>
+          Step {step.step}: {step.title}
+        </CardTitle>
+        <CardDescription>
+          Topics: {step.topics.join(', ')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {step.resources.length > 0 && (
+          <div className="space-y-1">
+            <h4 className="font-semibold">Resources:</h4>
+            <ul className="list-disc list-inside text-sm text-muted-foreground">
+              {step.resources.map((url: string, i: number) => (
+                <li key={i}>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    {url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  ))}
+  {roadmap.length === 0 && !loading && (
+    <p className="text-muted-foreground">
+      No roadmap available for these topics.
+    </p>
+  )}
+</TabsContent>
 
       </Tabs>
     </div>
   );
 };
-

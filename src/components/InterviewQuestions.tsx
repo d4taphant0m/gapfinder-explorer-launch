@@ -13,15 +13,26 @@ type Question = {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
 };
 
-export const InterviewQuestions = ({ topic = 'JavaScript' }) => {
+export const InterviewQuestions = () => {
+  const [topic, setTopic] = useState<string>('machine learning'); // default fallback
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const storedTopic = localStorage.getItem('gapfinder_topic');
+    if (storedTopic) {
+      setTopic(storedTopic);
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const response = await axios.post('http://localhost:3000/generate-interview-questions', {
+        setLoading(true);
+        setError('');
+
+        const response = await axios.post('https://backend-fawn-nine-74.vercel.app/generate-interview-questions', {
           topic,
         });
 
@@ -34,7 +45,7 @@ export const InterviewQuestions = ({ topic = 'JavaScript' }) => {
       }
     };
 
-    fetchQuestions();
+    if (topic) fetchQuestions();
   }, [topic]);
 
   return (
