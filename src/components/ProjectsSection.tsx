@@ -54,7 +54,7 @@ export const ProjectsSection = ({ aiOutput: propAiOutput, topic }: ProjectsSecti
 
       setLoading(true);
       try {
-        const response = await axios.post('http://localhost:3000/generate-projects', {
+        const response = await axios.post('https://backend-fawn-nine-74.vercel.app/generate-projects', {
           topics: aiOutput.gap_topics,
         });
 
